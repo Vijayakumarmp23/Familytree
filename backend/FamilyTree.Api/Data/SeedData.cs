@@ -29,6 +29,17 @@ public static class SeedData
     public static async Task InitializeAsync(FamilyTreeContext db)
     {
         await db.Database.EnsureCreatedAsync();
+
+        // Additive migration for databases created before adoption support:
+        // EnsureCreated won't alter an existing table, so add the column here.
+        // Throws "duplicate column" on already-migrated / fresh DBs -> ignore.
+        try
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE Relationships ADD COLUMN IsAdoptive INTEGER NOT NULL DEFAULT 0;");
+        }
+        catch { /* column already exists */ }
+
         if (await db.Persons.AnyAsync()) return; // already seeded
 
         // ---------- People (nodes) ----------

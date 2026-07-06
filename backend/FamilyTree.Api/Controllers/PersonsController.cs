@@ -83,13 +83,47 @@ public class PersonsController : ControllerBase
 
         // Wire up the optional relationship edges (deduped by the service).
         if (dto.FatherId is int fatherId)
-            await _graph.CreateRelationshipAsync(fatherId, person.Id, RelationshipType.ParentChild);
+            await _graph.CreateRelationshipAsync(fatherId, person.Id, RelationshipType.ParentChild, dto.ParentsAreAdoptive);
         if (dto.MotherId is int motherId)
-            await _graph.CreateRelationshipAsync(motherId, person.Id, RelationshipType.ParentChild);
+            await _graph.CreateRelationshipAsync(motherId, person.Id, RelationshipType.ParentChild, dto.ParentsAreAdoptive);
         if (dto.SpouseId is int spouseId)
             await _graph.CreateRelationshipAsync(person.Id, spouseId, RelationshipType.Spouse);
 
         var result = GenealogyService.ToDto(person);
         return CreatedAtAction(nameof(GetById), new { id = person.Id }, result);
+    }
+
+    /// <summary>
+    /// PUT /api/persons/{id} - update a person's own attributes. Relationships
+    /// are edited through the relationships endpoints, not here.
+    /// </summary>
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<PersonDto>> Update(int id, [FromBody] CreatePersonDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.FullName))
+            return BadRequest("FullName is required.");
+
+        var person = await _db.Persons.FindAsync(id);
+        if (person is null) return NotFound();
+
+        person.FullName = dto.FullName.Trim();
+        person.Gender = dto.Gender;
+        person.DateOfBirth = dto.DateOfBirth;
+        person.DateOfDeath = dto.IsAlive ? null : dto.DateOfDeath;
+        person.IsAlive = dto.IsAlive;
+
+        await _db.SaveChangesAsync();
+        return Ok(GenealogyService.ToDto(person));
+    }
+
+    /// <summary>
+    /// DELETE /api/persons/{id} - remove a person and every relationship edge
+    /// that touches them (so no dangling edges remain).
+    /// </summary>
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var removed = await _graph.DeletePersonAsync(id);
+        return removed ? NoContent() : NotFound();
     }
 }

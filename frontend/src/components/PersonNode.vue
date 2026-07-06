@@ -11,8 +11,6 @@ const props = defineProps({
   data: { type: Object, required: true }
 })
 
-const emit = defineEmits(['toggle-collapse'])
-
 const person = computed(() => props.data.person)
 
 const years = computed(() => {
@@ -31,11 +29,6 @@ const genderClass = computed(() => {
   if (g.startsWith('f')) return 'female'
   return 'unknown'
 })
-
-function onToggle(e) {
-  e.stopPropagation()
-  emit('toggle-collapse', person.value.id)
-}
 </script>
 
 <template>
@@ -55,15 +48,6 @@ function onToggle(e) {
       <span class="pn-years">{{ years }}</span>
       <span v-if="!person.isAlive" class="pn-badge">deceased</span>
     </div>
-
-    <button
-      v-if="data.hasDescendants"
-      class="pn-collapse"
-      :title="data.collapsed ? 'Expand descendants' : 'Collapse descendants'"
-      @click="onToggle"
-    >
-      {{ data.collapsed ? '+' : '−' }}
-    </button>
 
     <Handle type="source" :position="Position.Bottom" />
   </div>

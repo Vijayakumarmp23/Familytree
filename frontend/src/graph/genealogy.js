@@ -14,6 +14,7 @@ export function buildGenealogy(persons, relationships) {
   const parentsOf = new Map()   // childId  -> Set(parentId)
   const childrenOf = new Map()  // parentId -> Set(childId)
   const spousesOf = new Map()   // personId -> Set(spouseId)
+  const adoptive = new Set()    // "parentId-childId" for adoptive ParentChild edges
 
   const add = (map, key, val) => {
     if (!map.has(key)) map.set(key, new Set())
@@ -24,14 +25,19 @@ export function buildGenealogy(persons, relationships) {
     if (r.relationshipType === 'ParentChild') {
       add(parentsOf, r.person2Id, r.person1Id)
       add(childrenOf, r.person1Id, r.person2Id)
+      if (r.isAdoptive) adoptive.add(`${r.person1Id}-${r.person2Id}`)
     } else if (r.relationshipType === 'Spouse') {
       add(spousesOf, r.person1Id, r.person2Id)
       add(spousesOf, r.person2Id, r.person1Id)
     }
   }
 
-  return { personById, parentsOf, childrenOf, spousesOf, relationships }
+  return { personById, parentsOf, childrenOf, spousesOf, adoptive, relationships }
 }
+
+/** True if the parent->child edge was recorded as an adoption. */
+export const isAdoptiveLink = (g, parentId, childId) =>
+  g.adoptive.has(`${parentId}-${childId}`)
 
 const asArray = set => (set ? [...set] : [])
 
@@ -84,4 +90,19 @@ export function lineageOf(g, id) {
   for (const d of descendantsOf(g, id)) set.add(d)
   set.add(id)
   return set
+}
+
+/**
+ * True when two people are blood relatives - i.e. a marriage between them is
+ * consanguineous ("within the family"). That happens when they share a common
+ * ancestor, or one is a direct ancestor of the other. Used to draw the zig-zag
+ * marriage line.
+ */
+export function areBloodRelated(g, a, b) {
+  if (a === b) return false
+  const ancA = ancestorsOf(g, a)
+  const ancB = ancestorsOf(g, b)
+  if (ancA.has(b) || ancB.has(a)) return true // direct line
+  for (const x of ancA) if (ancB.has(x)) return true // shared ancestor
+  return false
 }

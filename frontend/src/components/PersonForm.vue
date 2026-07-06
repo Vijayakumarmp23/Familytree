@@ -4,7 +4,8 @@ import { ref, reactive, computed } from 'vue'
 /**
  * Modal for data entry. Two modes:
  *  - "add"   : create a NEW person and (optionally) pick an existing father,
- *              mother and spouse from dropdowns.
+ *              mother and spouse. An "Adopted" checkbox marks the parent links
+ *              as adoptive (drawn as a dotted line).
  *  - "marry" : link two people who are ALREADY in the tree (e.g. a cousin
  *              marriage). No new person record is created.
  *
@@ -27,7 +28,8 @@ const form = reactive({
   isAlive: true,
   fatherId: '',
   motherId: '',
-  spouseId: ''
+  spouseId: '',
+  adopted: false
 })
 
 const marry = reactive({ person1Id: '', person2Id: '' })
@@ -51,7 +53,8 @@ function submitAdd() {
     isAlive: form.isAlive,
     fatherId: form.fatherId ? Number(form.fatherId) : null,
     motherId: form.motherId ? Number(form.motherId) : null,
-    spouseId: form.spouseId ? Number(form.spouseId) : null
+    spouseId: form.spouseId ? Number(form.spouseId) : null,
+    parentsAreAdoptive: form.adopted
   })
 }
 
@@ -86,6 +89,9 @@ function submitMarry() {
           </label>
           <label class="pf-alive">
             <input type="checkbox" v-model="form.isAlive" /> Living
+          </label>
+          <label class="pf-alive">
+            <input type="checkbox" v-model="form.adopted" /> Adopted
           </label>
         </div>
 

@@ -17,6 +17,10 @@ builder.Services.AddControllers()
         // Avoid cycles if navigation objects are ever serialized directly.
         o.JsonSerializerOptions.ReferenceHandler =
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        // Accept & emit RelationshipType as strings ("Spouse"/"ParentChild")
+        // instead of the enum's numeric value, so POST bodies match GET output.
+        o.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 
 builder.Services.AddEndpointsApiExplorer();

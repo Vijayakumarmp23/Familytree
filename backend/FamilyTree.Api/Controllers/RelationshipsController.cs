@@ -36,9 +36,17 @@ public class RelationshipsController : ControllerBase
     public async Task<ActionResult<RelationshipDto>> Create([FromBody] CreateRelationshipDto dto)
     {
         var (created, error) = await _graph.CreateRelationshipAsync(
-            dto.Person1Id, dto.Person2Id, dto.RelationshipType);
+            dto.Person1Id, dto.Person2Id, dto.RelationshipType, dto.IsAdoptive);
 
         if (error is not null) return BadRequest(error);
         return CreatedAtAction(nameof(GetAll), new { id = created!.Id }, created);
+    }
+
+    /// <summary>DELETE /api/relationships/{id} - unlink two people (remove one edge).</summary>
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var removed = await _graph.DeleteRelationshipAsync(id);
+        return removed ? NoContent() : NotFound();
     }
 }

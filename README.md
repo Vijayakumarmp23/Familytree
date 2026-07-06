@@ -74,8 +74,11 @@ Open http://localhost:5173. The dev server talks to the API at
 | GET    | `/api/persons/{id}`          | One person + derived parents/spouses/children/siblings |
 | GET    | `/api/persons/search?name=`  | Search by partial name                        |
 | POST   | `/api/persons`               | Create a person (optionally link father/mother/spouse) |
+| PUT    | `/api/persons/{id}`          | Update a person's attributes                   |
+| DELETE | `/api/persons/{id}`          | Remove a person + all their relationship edges |
 | GET    | `/api/relationships`         | All relationships (graph edges)               |
 | POST   | `/api/relationships`         | Link two existing people                      |
+| DELETE | `/api/relationships/{id}`    | Unlink two people (remove one edge)            |
 
 ### Relationship examples
 

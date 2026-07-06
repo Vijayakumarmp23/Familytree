@@ -25,6 +25,12 @@ public class Relationship
     [Required]
     public RelationshipType RelationshipType { get; set; }
 
+    /// <summary>
+    /// Only meaningful for ParentChild edges: true when Person2 is an ADOPTED
+    /// child of Person1 (rendered as a dotted line) rather than a biological one.
+    /// </summary>
+    public bool IsAdoptive { get; set; }
+
     // ---- Navigation ----
     public Person? Person1 { get; set; }
     public Person? Person2 { get; set; }

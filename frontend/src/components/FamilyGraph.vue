@@ -6,6 +6,7 @@ import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import PersonNode from './PersonNode.vue'
 import UnionNode from './UnionNode.vue'
+import ZigZagEdge from './ZigZagEdge.vue'
 
 /**
  * The genealogy canvas. Wraps vue-flow (which gives us zoom + pan + minimap for
@@ -17,7 +18,7 @@ const props = defineProps({
   edges: { type: Array, required: true }
 })
 
-const emit = defineEmits(['select', 'toggle-collapse'])
+const emit = defineEmits(['select'])
 
 const { fitView, setCenter, findNode, onNodeClick } = useVueFlow()
 
@@ -30,7 +31,7 @@ watch(
   () => props.nodes.length,
   async () => {
     await nextTick()
-    fitView({ padding: 0.2, duration: 400 })
+    fitView({ padding: 0.12, duration: 400, maxZoom: 1.2 })
   }
 )
 
@@ -38,8 +39,8 @@ watch(
 function centerOnPerson(personId, zoom = 1.1) {
   const node = findNode(`p${personId}`)
   if (!node) return
-  const x = node.position.x + (node.dimensions?.width || 190) / 2
-  const y = node.position.y + (node.dimensions?.height || 78) / 2
+  const x = node.position.x + (node.dimensions?.width || 176) / 2
+  const y = node.position.y + (node.dimensions?.height || 72) / 2
   setCenter(x, y, { zoom, duration: 600 })
 }
 
@@ -50,17 +51,22 @@ defineExpose({ centerOnPerson, fitView })
   <VueFlow
     :nodes="nodes"
     :edges="edges"
-    :min-zoom="0.1"
+    :min-zoom="0.05"
     :max-zoom="2.5"
     :nodes-draggable="false"
     fit-view-on-init
+    :fit-view-options="{ padding: 0.12, maxZoom: 1.2 }"
     class="family-flow"
   >
     <template #node-person="nodeProps">
-      <PersonNode v-bind="nodeProps" @toggle-collapse="id => emit('toggle-collapse', id)" />
+      <PersonNode v-bind="nodeProps" />
     </template>
     <template #node-union="nodeProps">
       <UnionNode v-bind="nodeProps" />
+    </template>
+
+    <template #edge-zigzag="edgeProps">
+      <ZigZagEdge v-bind="edgeProps" />
     </template>
 
     <Background pattern-color="#d5dbe6" :gap="22" />

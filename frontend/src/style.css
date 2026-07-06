@@ -65,7 +65,7 @@ button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 /* Person node card */
 .person-node {
   position: relative;
-  width: 190px; min-height: 78px;
+  width: 176px; min-height: 72px;
   background: #fff; border-radius: 12px;
   border: 2px solid var(--line);
   border-left-width: 7px;
@@ -88,15 +88,6 @@ button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
   font-size: 10px; text-transform: uppercase; letter-spacing: .04em;
   background: #e2e8f0; color: #475569; padding: 1px 6px; border-radius: 999px;
 }
-.pn-collapse {
-  position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%);
-  width: 22px; height: 22px; padding: 0; border-radius: 50%;
-  background: #fff; border: 1px solid #94a3b8; line-height: 1;
-  font-size: 15px; font-weight: 700; color: #475569;
-  display: flex; align-items: center; justify-content: center; z-index: 5;
-}
-.pn-collapse:hover { background: #2563eb; color: #fff; border-color: #2563eb; }
-
 /* Union (marriage) node */
 .union-node {
   width: 16px; height: 16px; border-radius: 50%;
@@ -107,22 +98,32 @@ button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 .union-node.hl-dim { opacity: .25; }
 
 /* Edges */
-.vue-flow__edge.edge-spouse .vue-flow__edge-path { stroke: var(--line-spouse); stroke-width: 2.5; }
+.vue-flow__edge.edge-spouse .vue-flow__edge-path { stroke: var(--line-spouse); stroke-width: 2.5; fill: none; }
 .vue-flow__edge.edge-child .vue-flow__edge-path { stroke: var(--line); stroke-width: 2; }
+/* Adopted child -> dotted line */
+.vue-flow__edge.edge-adopted .vue-flow__edge-path { stroke-dasharray: 2 5; stroke-linecap: round; }
+/* Consanguineous marriage zig-zag keeps the marriage colour, never filled */
+.vue-flow__edge.edge-consang .vue-flow__edge-path { fill: none; stroke-width: 2; }
 .vue-flow__edge.edge-dim .vue-flow__edge-path { opacity: .18; }
-.vue-flow__edge.edge-on .vue-flow__edge-path { }
 .vue-flow__handle { opacity: 0; } /* handles are logical only */
 
 /* Legend */
 .legend {
   position: absolute; left: 14px; bottom: 14px; z-index: 6;
-  display: flex; gap: 14px; background: rgba(255,255,255,.9);
+  display: flex; flex-wrap: wrap; gap: 6px 14px; max-width: 560px;
+  align-items: center; background: rgba(255,255,255,.92);
   padding: 8px 12px; border-radius: 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.12);
 }
-.legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+.legend span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; }
 .legend .sw.male { background: var(--male); }
 .legend .sw.female { background: var(--female); }
 .legend .sw.union { background: var(--line-spouse); border-radius: 50%; }
+/* line-type swatches */
+.legend .lg { width: 26px; height: 8px; overflow: visible; }
+.legend .lg line, .legend .lg polyline { stroke: var(--line); stroke-width: 2; fill: none; }
+.legend .lg-dot line { stroke-dasharray: 2 3; stroke-linecap: round; }
+.legend .lg-zig polyline { stroke: var(--line-spouse); }
 
 .overlay {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -162,6 +163,19 @@ button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 .dp-rel:hover { background: #e0e7ff; }
 .dp-dagger { color: #94a3b8; }
 .dp-none { color: #cbd5e1; font-size: 13px; margin: 0; }
+.dp-edit-h { margin: 16px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; }
+.dp-chiplist { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dp-chiplist li { display: flex; align-items: center; justify-content: space-between; background: #f1f5f9; border-radius: 6px; padding: 6px 10px; font-size: 14px; }
+.dp-chiplist li.dp-none { background: transparent; padding: 0; }
+.chip-x { border: none; background: transparent; color: #94a3b8; font-size: 18px; line-height: 1; padding: 0 4px; }
+.chip-x:hover { color: #ef4444; background: transparent; }
+.pf-addrow { display: flex; gap: 6px; margin-bottom: 4px; }
+.pf-addrow select { flex: 1; font: inherit; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+.dp-actions button.edit { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+.dp-actions button.edit:hover { background: #e0e7ff; }
+.dp-footer { margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 14px; }
+button.danger { width: 100%; background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+button.danger:hover { background: #fecaca; border-color: #f87171; }
 
 /* ---------------- Modal form ---------------- */
 .modal-backdrop {
@@ -181,5 +195,6 @@ button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 .pf-row { display: flex; gap: 12px; }
 .pf-row > label { flex: 1; }
 .pf-alive { flex-direction: row !important; align-items: center; gap: 6px !important; align-self: flex-end; padding-bottom: 8px; }
+.pf-check { flex-direction: row !important; align-items: center; gap: 8px !important; font-size: 13px; color: #475569; background: #f8fafc; padding: 8px 10px; border-radius: 8px; }
 .pf-hint { font-size: 13px; color: #64748b; background: #f1f5f9; padding: 10px; border-radius: 8px; margin: 0; }
 .pf-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }

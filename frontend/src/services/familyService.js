@@ -37,9 +37,24 @@ export const familyService = {
    * Link two EXISTING people, e.g. marry two members already in the tree.
    * type is 'Spouse' or 'ParentChild'.
    */
-  createRelationship(person1Id, person2Id, relationshipType) {
+  createRelationship(person1Id, person2Id, relationshipType, isAdoptive = false) {
     return api
-      .post('/relationships', { person1Id, person2Id, relationshipType })
+      .post('/relationships', { person1Id, person2Id, relationshipType, isAdoptive })
       .then(r => r.data)
+  },
+
+  /** Update a person's own attributes (name, gender, dates, living status). */
+  updatePerson(id, person) {
+    return api.put(`/persons/${id}`, person).then(r => r.data)
+  },
+
+  /** Delete a person and all relationship edges that reference them. */
+  deletePerson(id) {
+    return api.delete(`/persons/${id}`)
+  },
+
+  /** Delete a single relationship edge (unlink two people). */
+  deleteRelationship(id) {
+    return api.delete(`/relationships/${id}`)
   }
 }

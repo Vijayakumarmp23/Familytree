@@ -1,5 +1,5 @@
 import dagre from '@dagrejs/dagre'
-import { descendantsOf } from './genealogy'
+import { isAdoptiveLink, areBloodRelated } from './genealogy'
 
 /**
  * Turn the genealogy graph into vue-flow nodes + edges, laid out with dagre.
@@ -19,31 +19,22 @@ import { descendantsOf } from './genealogy'
  * marriages / reconnecting branches render with no duplicate people.
  */
 
-const PERSON_W = 190
-const PERSON_H = 78
-const UNION_SIZE = 16
+const PERSON_W = 176
+const PERSON_H = 72
+const UNION_SIZE = 14
 
 const unionKey = ids => [...ids].sort((a, b) => a - b).join('-')
 
 /**
  * @param g            genealogy model from buildGenealogy()
- * @param opts.collapsedIds  Set of person ids whose descendants are hidden
  * @param opts.highlight     { nodes:Set<id>, dim:boolean } lineage highlight
  * @param opts.selectedId    currently selected person id
  */
 export function buildFlowGraph(g, opts = {}) {
-  const collapsedIds = opts.collapsedIds || new Set()
   const highlight = opts.highlight || null
   const selectedId = opts.selectedId ?? null
 
-  // ---- 1. Which people are hidden by a collapsed ancestor? ----
-  const hidden = new Set()
-  for (const cid of collapsedIds) {
-    for (const d of descendantsOf(g, cid)) hidden.add(d)
-  }
-  const isVisible = id => !hidden.has(id)
-
-  // ---- 2. Discover unions (couples + co-parent sets) ----
+  // ---- 1. Discover unions (couples + co-parent sets) ----
   // union -> { key, members:Set, children:Set }
   const unions = new Map()
   const ensureUnion = members => {
@@ -62,9 +53,8 @@ export function buildFlowGraph(g, opts = {}) {
     ensureUnion([...parentSet]).children.add(childId)
   }
 
-  // ---- 3. Build nodes ----
+  // ---- 2. Build nodes ----
   const nodes = []
-  const nodeIds = new Set()
 
   const highlightState = id => {
     if (!highlight) return 'none'
@@ -72,8 +62,6 @@ export function buildFlowGraph(g, opts = {}) {
   }
 
   for (const person of g.personById.values()) {
-    if (!isVisible(person.id)) continue
-    const childCount = g.childrenOf.get(person.id)?.size || 0
     nodes.push({
       id: `p${person.id}`,
       type: 'person',
@@ -81,22 +69,17 @@ export function buildFlowGraph(g, opts = {}) {
       data: {
         person,
         selected: person.id === selectedId,
-        highlight: highlightState(person.id),
-        hasDescendants: childCount > 0,
-        collapsed: collapsedIds.has(person.id)
+        highlight: highlightState(person.id)
       }
     })
-    nodeIds.add(`p${person.id}`)
   }
 
-  // Union nodes: keep only those with at least one visible member.
   const visibleUnions = []
   for (const u of unions.values()) {
-    const members = [...u.members].filter(isVisible)
-    if (members.length === 0) continue
-    const children = [...u.children].filter(isVisible)
+    const members = [...u.members]
+    const children = [...u.children]
     const uid = `u${u.key}`
-    // Highlight a union if all its (visible) members are highlighted.
+    // Highlight a union if all its members are highlighted.
     const hl = highlight
       ? members.every(m => highlight.nodes.has(m)) && members.length > 0 ? 'on' : 'dim'
       : 'none'
@@ -107,38 +90,45 @@ export function buildFlowGraph(g, opts = {}) {
       selectable: false,
       data: { highlight: hl }
     })
-    nodeIds.add(uid)
     visibleUnions.push({ uid, members, children })
   }
 
-  // ---- 4. Build edges ----
+  // ---- 3. Build edges ----
   const edges = []
   const edgeOn = (a, b) =>
     highlight ? (highlight.nodes.has(a) && highlight.nodes.has(b)) : true
 
   for (const { uid, members, children } of visibleUnions) {
+    // Is this a marriage between blood relatives? If so the spouse connectors
+    // are drawn zig-zag ("married within the family").
+    const consanguineous =
+      members.length === 2 && areBloodRelated(g, members[0], members[1])
+
     // spouse/partner: person (bottom) -> union (top)
     for (const m of members) {
+      const state = highlight && !edgeOn(m, uid) ? 'dim' : 'on'
       edges.push({
         id: `s-${uid}-${m}`,
         source: `p${m}`,
         target: uid,
-        type: 'smoothstep',
-        class: edgeClass('spouse', highlight && !edgeOn(m, uid) ? 'dim' : 'on'),
+        // custom zig-zag edge for within-family marriages, smoothstep otherwise
+        type: consanguineous ? 'zigzag' : 'smoothstep',
+        class: `edge-spouse edge-${state}${consanguineous ? ' edge-consang' : ''}`,
         data: { kind: 'spouse' }
       })
     }
-    // child: union (bottom) -> person (top)
+    // child: union (bottom) -> person (top). Adopted children get a dotted line.
     for (const c of children) {
       // highlight a child edge only when the child AND all its parents light up
       const parents = members
       const on = !highlight || (highlight.nodes.has(c) && parents.some(p => highlight.nodes.has(p)))
+      const adopted = parents.some(p => isAdoptiveLink(g, p, c))
       edges.push({
         id: `c-${uid}-${c}`,
         source: uid,
         target: `p${c}`,
         type: 'smoothstep',
-        class: edgeClass('child', on ? 'on' : 'dim'),
+        class: `edge-child edge-${on ? 'on' : 'dim'}${adopted ? ' edge-adopted' : ''}`,
         data: { kind: 'child' }
       })
     }
@@ -148,14 +138,13 @@ export function buildFlowGraph(g, opts = {}) {
   return { nodes, edges }
 }
 
-function edgeClass(kind, state) {
-  return `edge-${kind} edge-${state}`
-}
-
 /** Run dagre and write absolute positions back onto the vue-flow nodes. */
 function layoutWithDagre(nodes, edges) {
   const g = new dagre.graphlib.Graph()
-  g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 60, marginx: 40, marginy: 40 })
+  // Compact spacing keeps large families readable: tighter sibling gaps
+  // (nodesep) and generation gaps (ranksep) shrink the overall footprint so
+  // more of the tree stays legible when fit to the screen.
+  g.setGraph({ rankdir: 'TB', nodesep: 24, ranksep: 44, marginx: 20, marginy: 20 })
   g.setDefaultEdgeLabel(() => ({}))
 
   for (const n of nodes) {

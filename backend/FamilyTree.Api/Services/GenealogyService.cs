@@ -34,6 +34,10 @@ public class GenealogyService
             .Select(r => r.Person1Id)
             .ToHashSet();
 
+        // Adopted if any parent edge into this person is marked adoptive.
+        var isAdopted = edges.Any(r =>
+            r.RelationshipType == RelationshipType.ParentChild && r.Person2Id == id && r.IsAdoptive);
+
         // Children: edges where this person is the PARENT (Person1).
         var childIds = edges
             .Where(r => r.RelationshipType == RelationshipType.ParentChild && r.Person1Id == id)
@@ -77,7 +81,8 @@ public class GenealogyService
             Parents: Refs(parentIds),
             Spouses: Refs(spouseIds),
             Children: Refs(childIds),
-            Siblings: Refs(siblingIds));
+            Siblings: Refs(siblingIds),
+            IsAdopted: isAdopted);
     }
 
     /// <summary>
@@ -87,7 +92,7 @@ public class GenealogyService
     /// Returns (dto, error) - exactly one is non-null.
     /// </summary>
     public async Task<(RelationshipDto? dto, string? error)> CreateRelationshipAsync(
-        int person1Id, int person2Id, RelationshipType type)
+        int person1Id, int person2Id, RelationshipType type, bool isAdoptive = false)
     {
         if (person1Id == person2Id)
             return (null, "A person cannot have a relationship with themselves.");
@@ -104,7 +109,8 @@ public class GenealogyService
         {
             Person1Id = person1Id,
             Person2Id = person2Id,
-            RelationshipType = type
+            RelationshipType = type,
+            IsAdoptive = type == RelationshipType.ParentChild && isAdoptive
         };
         _db.Relationships.Add(rel);
         await _db.SaveChangesAsync();
@@ -128,8 +134,37 @@ public class GenealogyService
             r.Person1Id == person1Id && r.Person2Id == person2Id);
     }
 
+    /// <summary>
+    /// Delete a person AND every relationship edge that references them, so no
+    /// orphan/dangling edges are left behind. Returns false if the id is unknown.
+    /// </summary>
+    public async Task<bool> DeletePersonAsync(int id)
+    {
+        var person = await _db.Persons.FindAsync(id);
+        if (person is null) return false;
+
+        var edges = await _db.Relationships
+            .Where(r => r.Person1Id == id || r.Person2Id == id)
+            .ToListAsync();
+
+        _db.Relationships.RemoveRange(edges);
+        _db.Persons.Remove(person);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>Delete a single relationship edge by id. Returns false if unknown.</summary>
+    public async Task<bool> DeleteRelationshipAsync(int id)
+    {
+        var rel = await _db.Relationships.FindAsync(id);
+        if (rel is null) return false;
+        _db.Relationships.Remove(rel);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
     public static RelationshipDto ToDto(Relationship r) =>
-        new(r.Id, r.Person1Id, r.Person2Id, r.RelationshipType.ToString());
+        new(r.Id, r.Person1Id, r.Person2Id, r.RelationshipType.ToString(), r.IsAdoptive);
 
     public static PersonDto ToDto(Person p) =>
         new(p.Id, p.FullName, p.Gender, p.DateOfBirth, p.DateOfDeath, p.IsAlive);

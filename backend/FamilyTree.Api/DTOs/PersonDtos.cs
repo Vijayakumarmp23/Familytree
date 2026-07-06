@@ -29,14 +29,16 @@ public record PersonDetailDto(
     IReadOnlyList<PersonRefDto> Parents,
     IReadOnlyList<PersonRefDto> Spouses,
     IReadOnlyList<PersonRefDto> Children,
-    IReadOnlyList<PersonRefDto> Siblings);
+    IReadOnlyList<PersonRefDto> Siblings,
+    bool IsAdopted);
 
 /// <summary>An edge as returned by GET /relationships and POST /relationships.</summary>
 public record RelationshipDto(
     int Id,
     int Person1Id,
     int Person2Id,
-    string RelationshipType);
+    string RelationshipType,
+    bool IsAdoptive);
 
 /// <summary>
 /// Body for POST /persons. The core fields create the node; the optional
@@ -55,6 +57,9 @@ public class CreatePersonDto
     public int? FatherId { get; set; }
     public int? MotherId { get; set; }
     public int? SpouseId { get; set; }
+
+    /// <summary>When true, the father/mother links created here are adoptive.</summary>
+    public bool ParentsAreAdoptive { get; set; }
 }
 
 /// <summary>Body for POST /relationships. RelationshipType is "ParentChild" or "Spouse".</summary>
@@ -63,4 +68,7 @@ public class CreateRelationshipDto
     public int Person1Id { get; set; }
     public int Person2Id { get; set; }
     public RelationshipType RelationshipType { get; set; }
+
+    /// <summary>Set true (ParentChild only) to mark Person2 as an adopted child.</summary>
+    public bool IsAdoptive { get; set; }
 }
